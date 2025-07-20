@@ -8,7 +8,7 @@ Połączenie internetowe do pobrania plików z repozytorium
 
 Instalacja
 
-Pobierz i uruchom skrypt instalacyjny:curl -s -o install.sh https://raw.githubusercontent.com/TWOJ_USERNAME/redshift-xfce-toggle/main/install.sh
+Pobierz i uruchom skrypt instalacyjny:curl -s -o install.sh https://raw.githubusercontent.com/hattimon/redshift-xfce-toggle/main/install.sh
 chmod +x install.sh
 ./install.sh
 
