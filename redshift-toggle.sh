@@ -4,6 +4,7 @@ LOCKFILE="/tmp/redshift_status.lock"
 CONFIG_FILE="$HOME/.config/redshift/redshift.conf"
 ICON_ON="$HOME/.local/share/icons/redshift-on.png"
 ICON_OFF="$HOME/.local/share/icons/redshift-off.png"
+DEBUG_FILE="/tmp/redshift_toggle_debug.txt"
 
 # Funkcje
 turn_on() {
@@ -11,7 +12,6 @@ turn_on() {
   sleep 1  # Poczekaj na uruchomienie Redshift
   echo "on" > "$LOCKFILE"
   notify-send -i "$ICON_ON" "Redshift włączony"
-  # Aktualizacja ikony w panelu XFCE
   update_icon "$ICON_ON"
 }
 
@@ -20,7 +20,6 @@ turn_off() {
   sleep 1  # Poczekaj na wyłączenie Redshift
   echo "off" > "$LOCKFILE"
   notify-send -i "$ICON_OFF" "Redshift wyłączony"
-  # Aktualizacja ikony w panelu XFCE
   update_icon "$ICON_OFF"
 }
 
@@ -33,7 +32,6 @@ set_temp() {
     sleep 1
     redshift -c "$CONFIG_FILE" &
     notify-send -i "$ICON_ON" "Redshift: ustawiono temperaturę $TEMP K"
-    # Aktualizacja ikony w panelu XFCE
     update_icon "$ICON_ON"
   fi
 }
@@ -54,10 +52,13 @@ if [ "$1" = "--menu" ]; then
     notify-send "Błąd" "Pakiet yad nie jest zainstalowany. Zainstaluj go: sudo apt install yad"
     exit 1
   fi
-  ACTION=$(yad --title="Redshift" --window-icon="$ICON_ON" \
-    --text="Wybierz opcję:" --list --no-headers --print-column=0 --column="Opcja" \
-    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null | tr -d '\n')
-  echo "Wybrano (po trimie): '$ACTION'"  # Debugowanie
+  # Zapisz surowe wyjście yad do pliku tymczasowego do debugowania
+  yad --title="Redshift" --window-icon="$ICON_ON" \
+    --text="Wybierz opcję:" --list --no-headers --print-output --column="Opcja" \
+    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null > "$DEBUG_FILE"
+  ACTION=$(cat "$DEBUG_FILE" | head -n 1)  # Pobierz pierwszą linię
+  echo "Surowe wyjście yad: '$ACTION'"  # Debugowanie
+  rm -f "$DEBUG_FILE"  # Usuń plik tymczasowy
   case "$ACTION" in
     "Włącz") turn_on ;;
     "Wyłącz") turn_off ;;
