@@ -11,9 +11,10 @@ turn_on() {
   echo "on" > "$LOCKFILE"
   notify-send -i "$ICON_ON" "Redshift włączony"
   # Aktualizacja ikony w panelu XFCE
-  PANEL_PLUGIN=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
-  if [ -n "$PANEL_PLUGIN" ]; then
-    xfconf-query -c xfce4-panel -p /plugins/plugin-$PANEL_PLUGIN/icon -s "$ICON_ON" 2>/dev/null
+  PANEL_ID=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
+  if [ -n "$PANEL_ID" ]; then
+    xfconf-query -c xfce4-panel -p /plugins/plugin-$PANEL_ID/icon -s "$ICON_ON" 2>/dev/null
+    xfce4-panel -r 2>/dev/null
   fi
 }
 
@@ -22,9 +23,10 @@ turn_off() {
   echo "off" > "$LOCKFILE"
   notify-send -i "$ICON_OFF" "Redshift wyłączony"
   # Aktualizacja ikony w panelu XFCE
-  PANEL_PLUGIN=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
-  if [ -n "$PANEL_PLUGIN" ]; then
-    xfconf-query -c xfce4-panel -p /plugins/plugin-$PANEL_PLUGIN/icon -s "$ICON_OFF" 2>/dev/null
+  PANEL_ID=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
+  if [ -n "$PANEL_ID" ]; then
+    xfconf-query -c xfce4-panel -p /plugins/plugin-$PANEL_ID/icon -s "$ICON_OFF" 2>/dev/null
+    xfce4-panel -r 2>/dev/null
   fi
 }
 
@@ -32,13 +34,16 @@ set_temp() {
   TEMP=$1
   sed -i "s/temp-day=.*/temp-day=$TEMP/" "$CONFIG_FILE"
   sed -i "s/temp-night=.*/temp-night=$((TEMP-1000))/" "$CONFIG_FILE"
-  # Automatyczne włączenie Redshift, jeśli jest wyłączony
-  if [ "$(cat "$LOCKFILE" 2>/dev/null)" != "on" ]; then
-    turn_on
-  else
+  if [ "$(cat "$LOCKFILE" 2>/dev/null)" = "on" ]; then
     pkill redshift || true
     redshift -c "$CONFIG_FILE" &
     notify-send -i "$ICON_ON" "Redshift: ustawiono temperaturę $TEMP K"
+    # Aktualizacja ikony w panelu XFCE
+    PANEL_ID=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
+    if [ -n "$PANEL_ID" ]; then
+      xfconf-query -c xfce4-panel -p /plugins/plugin-$PANEL_ID/icon -s "$ICON_ON" 2>/dev/null
+      xfce4-panel -r 2>/dev/null
+    fi
   fi
 }
 
@@ -50,7 +55,7 @@ if [ "$1" = "--menu" ]; then
   fi
   ACTION=$(yad --title="Redshift" --window-icon="$ICON_ON" \
     --text="Wybierz opcję:" --list --no-headers --column="Opcja" \
-    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" 2>/dev/null)
+    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null)
   case "$ACTION" in
     "Włącz") turn_on ;;
     "Wyłącz") turn_off ;;
