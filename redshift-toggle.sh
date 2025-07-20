@@ -12,11 +12,7 @@ turn_on() {
   echo "on" > "$LOCKFILE"
   notify-send -i "$ICON_ON" "Redshift włączony"
   # Aktualizacja ikony w panelu XFCE
-  PANEL_ID=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
-  if [ -n "$PANEL_ID" ]; then
-    xfconf-query -c xfce4-panel -p /plugins/plugin-$((PANEL_ID-1))/icon -s "$ICON_ON" 2>/dev/null
-    xfce4-panel -r 2>/dev/null
-  fi
+  update_icon "$ICON_ON"
 }
 
 turn_off() {
@@ -25,11 +21,7 @@ turn_off() {
   echo "off" > "$LOCKFILE"
   notify-send -i "$ICON_OFF" "Redshift wyłączony"
   # Aktualizacja ikony w panelu XFCE
-  PANEL_ID=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
-  if [ -n "$PANEL_ID" ]; then
-    xfconf-query -c xfce4-panel -p /plugins/plugin-$((PANEL_ID-1))/icon -s "$ICON_OFF" 2>/dev/null
-    xfce4-panel -r 2>/dev/null
-  fi
+  update_icon "$ICON_OFF"
 }
 
 set_temp() {
@@ -42,11 +34,17 @@ set_temp() {
     redshift -c "$CONFIG_FILE" &
     notify-send -i "$ICON_ON" "Redshift: ustawiono temperaturę $TEMP K"
     # Aktualizacja ikony w panelu XFCE
-    PANEL_ID=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
-    if [ -n "$PANEL_ID" ]; then
-      xfconf-query -c xfce4-panel -p /plugins/plugin-$((PANEL_ID-1))/icon -s "$ICON_ON" 2>/dev/null
-      xfce4-panel -r 2>/dev/null
-    fi
+    update_icon "$ICON_ON"
+  fi
+}
+
+# Funkcja do aktualizacji ikony i odświeżenia panelu
+update_icon() {
+  local NEW_ICON=$1
+  PANEL_ID=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
+  if [ -n "$PANEL_ID" ]; then
+    xfconf-query -c xfce4-panel -p /plugins/plugin-$((PANEL_ID-1))/icon -s "$NEW_ICON" 2>/dev/null
+    xfce4-panel -r 2>/dev/null || true  # Odświeżenie tylko raz
   fi
 }
 
@@ -58,15 +56,15 @@ if [ "$1" = "--menu" ]; then
   fi
   ACTION=$(yad --title="Redshift" --window-icon="$ICON_ON" \
     --text="Wybierz opcję:" --list --no-headers --print-column=0 --column="Opcja" \
-    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null)
-  echo "Wybrano: $ACTION"  # Debugowanie
+    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null | tr -d '\n')
+  echo "Wybrano (po trimie): '$ACTION'"  # Debugowanie
   case "$ACTION" in
     "Włącz") turn_on ;;
     "Wyłącz") turn_off ;;
     "Temperatura 4500K") set_temp 4500 ;;
     "Temperatura 5500K") set_temp 5500 ;;
     "Temperatura 6500K") set_temp 6500 ;;
-    *) notify-send "Błąd" "Nieznana opcja: $ACTION" ;;
+    *) notify-send "Błąd" "Nieznana opcja: '$ACTION'" ;;
   esac
   exit 0
 fi
