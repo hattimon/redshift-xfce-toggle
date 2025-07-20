@@ -52,21 +52,26 @@ if [ "$1" = "--menu" ]; then
     notify-send "Błąd" "Pakiet yad nie jest zainstalowany. Zainstaluj go: sudo apt install yad"
     exit 1
   fi
-  # Zapisz surowe wyjście yad do pliku tymczasowego do debugowania
-  yad --title="Redshift" --window-icon="$ICON_ON" \
+  # Przechwycenie surowego wyjścia yad do zmiennej i pliku debugującego
+  ACTION=$(yad --title="Redshift" --window-icon="$ICON_ON" \
     --text="Wybierz opcję:" --list --no-headers --print-output --column="Opcja" \
-    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null > "$DEBUG_FILE"
-  ACTION=$(cat "$DEBUG_FILE" | head -n 1)  # Pobierz pierwszą linię
-  echo "Surowe wyjście yad: '$ACTION'"  # Debugowanie
+    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null)
+  echo "Surowe wyjście yad: '$ACTION'" > "$DEBUG_FILE"  # Zapis do pliku
+  echo "Surowe wyjście yad: '$ACTION'"  # Wyświetl w terminalu
+  # Sprawdzenie, czy ACTION jest niepuste
+  if [ -z "$ACTION" ]; then
+    notify-send "Błąd" "Nie wybrano żadnej opcji lub wyjście jest puste"
+  else
+    case "$ACTION" in
+      "Włącz") turn_on ;;
+      "Wyłącz") turn_off ;;
+      "Temperatura 4500K") set_temp 4500 ;;
+      "Temperatura 5500K") set_temp 5500 ;;
+      "Temperatura 6500K") set_temp 6500 ;;
+      *) notify-send "Błąd" "Nieznana opcja: '$ACTION'" ;;
+    esac
+  fi
   rm -f "$DEBUG_FILE"  # Usuń plik tymczasowy
-  case "$ACTION" in
-    "Włącz") turn_on ;;
-    "Wyłącz") turn_off ;;
-    "Temperatura 4500K") set_temp 4500 ;;
-    "Temperatura 5500K") set_temp 5500 ;;
-    "Temperatura 6500K") set_temp 6500 ;;
-    *) notify-send "Błąd" "Nieznana opcja: '$ACTION'" ;;
-  esac
   exit 0
 fi
 
