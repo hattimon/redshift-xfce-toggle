@@ -6,23 +6,25 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-# Adres repozytorium GitHub (zmień na swoje repozytorium)
+# Adres repozytorium GitHub
 REPO_URL="https://raw.githubusercontent.com/hattimon/redshift-xfce-toggle/main"
 
 # Funkcja do wyświetlania komunikatów
 log() { echo -e "${GREEN}[*] $1${NC}"; }
 error() { echo -e "${RED}[✗] $1${NC}"; exit 1; }
 
+# 🔍 Sprawdzanie połączenia internetowego
+log "Sprawdzanie połączenia internetowego..."
+if ! ping -c 1 archive.ubuntu.com &>/dev/null; then
+  error "Brak połączenia internetowego. Sprawdź połączenie i spróbuj ponownie."
+fi
+
 # 🔍 Sprawdzanie instalacji redshift i zależności
 log "Sprawdzanie instalacji redshift..."
-if ! command -v redshift >/dev/null 2>& stosunki1; then
+if ! command -v redshift >/dev/null 2>&1; then
   log "Redshift nie jest zainstalowany. Instaluję..."
-  if ! ping -c 1 archive.ubuntu.com &>/dev/null; then
-    log "Brak połączenia z repozytorium – dodaję mirror"
-    sudo sed -i 's|http://.*.ubuntu.com|http://archive.ubuntu.com|g' /etc/apt/sources.list
-  fi
-  sudo apt update
-  sudo apt install -y redshift curl jq yad
+  sudo apt update || log "Ostrzeżenie: Wystąpiły problemy z repozytoriami, ale kontynuuję instalację."
+  sudo apt install -y redshift curl jq yad xfce4-settings || error "Nie udało się zainstalować wymaganych pakietów."
 else
   log "Redshift już zainstalowany."
 fi
@@ -69,7 +71,7 @@ lon=$LON
 screen=0
 EOF
 
-# 📥 Pobierzanie ikon z repozytorium
+# 📥 Pobieranie ikon z repozytorium
 log "Pobieranie ikon z repozytorium..."
 curl -s -o ~/.local/share/icons/redshift-on.png "$REPO_URL/redshift-on.png" || error "Nie udało się pobrać ikony redshift-on.png"
 curl -s -o ~/.local/share/icons/redshift-off.png "$REPO_URL/redshift-off.png" || error "Nie udało się pobrać ikony redshift-off.png"
@@ -97,10 +99,18 @@ EOF
 
 log "Instalacja zakończona."
 echo
-echo "👉 Otwórz Panel XFCE → Dodaj element → Aktywator"
-echo "➡️ Edytuj → Dodaj nowy program"
-echo "➡️ Wybierz: ~/.local/share/applications/redshift-toggle.desktop"
-echo "🟡 Kliknięcie ikony pokaże menu z opcjami: Włącz, Wyłącz, zmiana temperatury barwowej."
+echo "👉 Aby dodać aktywator do panelu XFCE, wykonaj następujące kroki:"
+echo "1. Kliknij prawym przyciskiem myszy na panelu XFCE (pasek na górze lub dole ekranu)."
+echo "2. Wybierz „Panel” → „Dodaj nowy element”."
+echo "3. Wybierz „Aktywator” (Launcher) i kliknij „Dodaj”."
+echo "4. Kliknij prawym przyciskiem myszy na nowym aktywatorze w panelu → „Właściwości”."
+echo "5. Kliknij „Dodaj nowy pusty element” (lub ikonę „+”)."
+echo "6. Wypełnij pola:"
+echo "   - Nazwa: Redshift Toggle"
+echo "   - Polecenie: /bin/bash -c \"$HOME/.local/bin/redshift-toggle --menu\""
+echo "   - Ikona: Wybierz ~/.local/share/icons/redshift-on.png (lub wpisz pełną ścieżkę: $HOME/.local/share/icons/redshift-on.png)"
+echo "   - Komentarz (opcjonalnie): Włącz/Wyłącz Redshift lub zmień ustawienia"
+echo "7. Kliknij „OK”, aby dodać element, i zamknij okno właściwości."
+echo "🟡 Kliknięcie ikony w panelu wyświetli menu z opcjami: Włącz, Wyłącz, Temperatura 4500K, 5500K, 6500K."
 echo
 echo "📦 Projekt zainstalowany z repozytorium GitHub."
-```
