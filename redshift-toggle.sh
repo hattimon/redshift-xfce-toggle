@@ -4,7 +4,6 @@ LOCKFILE="/tmp/redshift_status.lock"
 CONFIG_FILE="$HOME/.config/redshift/redshift.conf"
 ICON_ON="$HOME/.local/share/icons/redshift-on.png"
 ICON_OFF="$HOME/.local/share/icons/redshift-off.png"
-DEBUG_FILE="/tmp/redshift_toggle_debug.txt"
 
 # Funkcje
 turn_on() {
@@ -12,7 +11,9 @@ turn_on() {
   sleep 1  # Poczekaj na uruchomienie Redshift
   echo "on" > "$LOCKFILE"
   notify-send -i "$ICON_ON" "Redshift włączony"
-  update_icon "$ICON_ON"
+  # Ręczna aktualizacja ikony (wymaga poprawnego ID wtyczki)
+  # xfconf-query -c xfce4-panel -p /plugins/plugin-X/icon -s "$ICON_ON" 2>/dev/null
+  # xfce4-panel -r 2>/dev/null || true
 }
 
 turn_off() {
@@ -20,7 +21,9 @@ turn_off() {
   sleep 1  # Poczekaj na wyłączenie Redshift
   echo "off" > "$LOCKFILE"
   notify-send -i "$ICON_OFF" "Redshift wyłączony"
-  update_icon "$ICON_OFF"
+  # Ręczna aktualizacja ikony (wymaga poprawnego ID wtyczki)
+  # xfconf-query -c xfce4-panel -p /plugins/plugin-X/icon -s "$ICON_OFF" 2>/dev/null
+  # xfce4-panel -r 2>/dev/null || true
 }
 
 set_temp() {
@@ -32,17 +35,9 @@ set_temp() {
     sleep 1
     redshift -c "$CONFIG_FILE" &
     notify-send -i "$ICON_ON" "Redshift: ustawiono temperaturę $TEMP K"
-    update_icon "$ICON_ON"
-  fi
-}
-
-# Funkcja do aktualizacji ikony i odświeżenia panelu
-update_icon() {
-  local NEW_ICON=$1
-  PANEL_ID=$(xfce4-panel --list | grep -n launcher | grep redshift-toggle.desktop | cut -d: -f1)
-  if [ -n "$PANEL_ID" ]; then
-    xfconf-query -c xfce4-panel -p /plugins/plugin-$((PANEL_ID-1))/icon -s "$NEW_ICON" 2>/dev/null
-    xfce4-panel -r 2>/dev/null || true  # Odświeżenie tylko raz
+    # Ręczna aktualizacja ikony (wymaga poprawnego ID wtyczki)
+    # xfconf-query -c xfce4-panel -p /plugins/plugin-X/icon -s "$ICON_ON" 2>/dev/null
+    # xfce4-panel -r 2>/dev/null || true
   fi
 }
 
@@ -52,13 +47,10 @@ if [ "$1" = "--menu" ]; then
     notify-send "Błąd" "Pakiet yad nie jest zainstalowany. Zainstaluj go: sudo apt install yad"
     exit 1
   fi
-  # Przechwycenie surowego wyjścia yad do zmiennej i pliku debugującego
   ACTION=$(yad --title="Redshift" --window-icon="$ICON_ON" \
     --text="Wybierz opcję:" --list --no-headers --print-output --column="Opcja" \
-    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null)
-  echo "Surowe wyjście yad: '$ACTION'" > "$DEBUG_FILE"  # Zapis do pliku
-  echo "Surowe wyjście yad: '$ACTION'"  # Wyświetl w terminalu
-  # Sprawdzenie, czy ACTION jest niepuste
+    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null | cut -d'|' -f1)
+  echo "Przetworzone wyjście yad: '$ACTION'"  # Debugowanie
   if [ -z "$ACTION" ]; then
     notify-send "Błąd" "Nie wybrano żadnej opcji lub wyjście jest puste"
   else
@@ -71,7 +63,6 @@ if [ "$1" = "--menu" ]; then
       *) notify-send "Błąd" "Nieznana opcja: '$ACTION'" ;;
     esac
   fi
-  rm -f "$DEBUG_FILE"  # Usuń plik tymczasowy
   exit 0
 fi
 
