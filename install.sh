@@ -7,7 +7,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # Adres repozytorium GitHub (zmień na swoje repozytorium)
-REPO_URL="https://raw.githubusercontent.com/TWOJ_USERNAME/redshift-xfce-toggle/main"
+REPO_URL="https://raw.githubusercontent.com/hattimon/redshift-xfce-toggle/main"
 
 # Funkcja do wyświetlania komunikatów
 log() { echo -e "${GREEN}[*] $1${NC}"; }
