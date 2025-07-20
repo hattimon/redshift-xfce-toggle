@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Redshift Toggle
+Comment=Włącz/Wyłącz Redshift lub zmień ustawienia
+Exec=/bin/bash -c "$HOME/.local/bin/redshift-toggle --menu"
+Icon=$HOME/.local/share/icons/redshift-on.png
+Terminal=false
+Type=Application
+Categories=Utility;
