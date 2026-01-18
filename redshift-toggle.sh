@@ -55,11 +55,11 @@ if [ "$1" = "--menu" ]; then
     notify-send "Błąd" "Nie wybrano żadnej opcji lub wyjście jest puste"
   else
     case "$ACTION" in
-      "Włącz") turn_on ;;
-      "Wyłącz") turn_off ;;
-      "Temperatura 4500K") set_temp 4500 ;;
-      "Temperatura 5500K") set_temp 5500 ;;
-      "Temperatura 6500K") set_temp 6500 ;;
+      "ON") turn_on ;;
+      "OFF") turn_off ;;
+      "Temp 4500K") set_temp 4500 ;;
+      "Temp 5500K") set_temp 5500 ;;
+      "Temp 6500K") set_temp 6500 ;;
       *) notify-send "Błąd" "Nieznana opcja: '$ACTION'" ;;
     esac
   fi
