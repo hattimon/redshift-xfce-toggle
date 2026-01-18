@@ -2,6 +2,13 @@
 
 # Redshift XFCE Toggle
 
+| File | Description |
+| ---- | ----------- |
+| [README.md](README.md) | Polish documentation |
+| [Redshift_EN.md](Redshift_EN.md) | English documentation |
+
+# Redshift XFCE Toggle
+
 Skrypt instalacyjny umożliwiający szybkie dodanie przełącznika **Redshift** w panelu **XFCE** z wygodnym menu do:
 - włączania/wyłączania Redshift,
 - zmiany temperatury barwowej (4500K, 5500K, 6500K).
