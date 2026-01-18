@@ -38,21 +38,21 @@ Skrypt instalacyjny umożliwiający szybkie dodanie przełącznika **Redshift** 
 4. Wypełnij dane:
 
    - **Nazwa**: `Redshift Toggle`
+   - **Komentarz (opcjonalnie)**: `Włącz/Wyłącz Redshift lub zmień ustawienia`
    - **Polecenie**:
 
      ```bash
      /bin/bash -c "$HOME/.local/bin/redshift-toggle --menu"
      ```
-
-   - **Komentarz (opcjonalnie)**: `Włącz/Wyłącz Redshift lub zmień ustawienia`
-  
-   - **Katalog roboczy**: `~/.local/bin/redshift-toggle`
+   - **Kliknij w Ikona** `Wpisz "Redshift" i wybierz ikone`
+  ![Redshift](Redshift.png)
      
-   - **Uruchamianie w terminalu (opcjonalnie)**
 
 5. Kliknij `OK`, aby zapisać i zamknij okno właściwości.
 
-6. Kliknij ikonę w panelu XFCE, aby otworzyć menu z opcjami:
+7. Zrestartuj system (bez tego może nie działać prawidłowo)
+
+8. Kliknij ikonę w panelu XFCE, aby otworzyć menu z opcjami:
    - `Włącz`
    - `Wyłącz`
    - `Temperatura 4500K`
