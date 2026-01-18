@@ -24,36 +24,15 @@ log "Checking redshift installation..."
 if ! command -v redshift >/dev/null 2>&1; then
   log "Redshift not installed. Installing..."
   sudo apt update || log "Warning: Repository issues, continuing installation."
-  sudo apt install -y redshift curl jq yad xfce4-settings || error "Failed to install required packages."
+  sudo apt install -y redshift curl yad xfce4-settings || error "Failed to install required packages."
 else
   log "Redshift already installed."
 fi
 
-# 🔍 Getting location
-echo
-echo "🌍 Enter location data (use Latin names or without diacritics)"
-read -p "Country (e.g. Poland): " COUNTRY
-read -p "City (e.g. Warsaw): " CITY
-
-log "Searching GPS location for ${CITY}, ${COUNTRY}..."
-RESPONSE=$(curl -s --connect-timeout 5 "https://geocode.maps.co/search?city=${CITY}&country=${COUNTRY}")
-
-if [[ -z "$RESPONSE" || "$RESPONSE" == "[]" ]]; then
-  error "Location not found. Check spelling or internet connection."
-fi
-
-LAT=$(echo "$RESPONSE" | jq -r '.[0].lat' 2>/dev/null)
-LON=$(echo "$RESPONSE" | jq -r '.[0].lon' 2>/dev/null)
-
-if [[ -z "$LAT" || -z "$LON" ]]; then
-  error "Failed to retrieve GPS coordinates."
-fi
-log "Location found: lat=$LAT, lon=$LON"
-
 # 🔧 Creating directories
 mkdir -p ~/.config/redshift ~/.local/bin ~/.local/share/icons ~/.config/autostart ~/.local/share/applications
 
-# 🔧 Redshift configuration
+# 🔧 Redshift configuration (uses system local time CET/CEST - no GPS needed)
 cat > ~/.config/redshift/redshift.conf <<EOF
 [redshift]
 temp-day=5800
@@ -62,10 +41,6 @@ transition=1
 gamma=0.9
 location-provider=manual
 adjustment-method=randr
-
-[manual]
-lat=$LAT
-lon=$LON
 
 [randr]
 screen=0
@@ -85,6 +60,9 @@ chmod +x ~/.local/bin/redshift-toggle
 log "Downloading redshift-toggle.desktop file..."
 curl -s -o ~/.local/share/applications/redshift-toggle.desktop "$REPO_URL/redshift-toggle.desktop" || error "Failed to download redshift-toggle.desktop file"
 
+# Add PATH permanently
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+
 # 🔧 Redshift autostart
 cat > ~/.config/autostart/redshift.desktop <<EOF
 [Desktop Entry]
@@ -94,7 +72,7 @@ Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
 Name=Redshift
-Comment=Auto-start Redshift
+Comment=Auto-start Redshift (uses system local time)
 EOF
 
 log "Installation completed."
@@ -113,4 +91,4 @@ echo "   - Comment (optional): Enable/Disable Redshift or change settings"
 echo "7. Click 'OK' to add item and close properties window."
 echo "🟡 Clicking panel icon shows menu: On, Off, Temperature 4500K, 5500K, 6500K."
 echo
-echo "📦 Project installed from GitHub repository."
+echo "📦 Project installed from GitHub repository. Reload: source ~/.bashrc"
