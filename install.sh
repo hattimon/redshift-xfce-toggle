@@ -32,8 +32,8 @@ fi
 # 🔍 Pobieranie lokalizacji
 echo
 echo "🌍 Podaj dane lokalizacji (użyj nazw łacińskich lub bez znaków diakrytycznych)"
-read -p "Kraj (np. Poland): " COUNTRY
-read -p "Miasto (np. Warsaw): " CITY
+read -p "Kraj/Country (np. Poland): " COUNTRY
+read -p "Miasto/City (np. Warsaw): " CITY
 
 log "Szukanie lokalizacji GPS dla ${CITY}, ${COUNTRY}..."
 RESPONSE=$(curl -s --connect-timeout 5 "https://geocode.maps.co/search?city=${CITY}&country=${COUNTRY}")
@@ -97,7 +97,7 @@ Name=Redshift
 Comment=Auto-start Redshift
 EOF
 
-log "Instalacja zakończona."
+log "Instalacja zakończona. / Installation completed"
 echo
 echo "👉 Aby dodać aktywator do panelu XFCE, wykonaj następujące kroki:"
 echo "1. Kliknij prawym przyciskiem myszy na panelu XFCE (pasek na górze lub dole ekranu)."
