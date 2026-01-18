@@ -5,23 +5,23 @@ CONFIG_FILE="$HOME/.config/redshift/redshift.conf"
 ICON_ON="$HOME/.local/share/icons/redshift-on.png"
 ICON_OFF="$HOME/.local/share/icons/redshift-off.png"
 
-# Functions
+# Funkcje
 turn_on() {
   redshift -c "$CONFIG_FILE" &
-  sleep 1  # Wait for Redshift to start
+  sleep 1  # Poczekaj na uruchomienie Redshift
   echo "on" > "$LOCKFILE"
-  notify-send -i "$ICON_ON" "Redshift enabled"
-  # Manual icon update (requires correct plugin ID)
+  notify-send -i "$ICON_ON" "Redshift włączony"
+  # Ręczna aktualizacja ikony (wymaga poprawnego ID wtyczki)
   # xfconf-query -c xfce4-panel -p /plugins/plugin-X/icon -s "$ICON_ON" 2>/dev/null
   # xfce4-panel -r 2>/dev/null || true
 }
 
 turn_off() {
   pkill redshift || true
-  sleep 1  # Wait for Redshift to stop
+  sleep 1  # Poczekaj na wyłączenie Redshift
   echo "off" > "$LOCKFILE"
-  notify-send -i "$ICON_OFF" "Redshift disabled"
-  # Manual icon update (requires correct plugin ID)
+  notify-send -i "$ICON_OFF" "Redshift wyłączony"
+  # Ręczna aktualizacja ikony (wymaga poprawnego ID wtyczki)
   # xfconf-query -c xfce4-panel -p /plugins/plugin-X/icon -s "$ICON_OFF" 2>/dev/null
   # xfce4-panel -r 2>/dev/null || true
 }
@@ -34,39 +34,39 @@ set_temp() {
     pkill redshift || true
     sleep 1
     redshift -c "$CONFIG_FILE" &
-    notify-send -i "$ICON_ON" "Redshift: temperature set to $TEMP K"
-    # Manual icon update (requires correct plugin ID)
+    notify-send -i "$ICON_ON" "Redshift: ustawiono temperaturę $TEMP K"
+    # Ręczna aktualizacja ikony (wymaga poprawnego ID wtyczki)
     # xfconf-query -c xfce4-panel -p /plugins/plugin-X/icon -s "$ICON_ON" 2>/dev/null
     # xfce4-panel -r 2>/dev/null || true
   fi
 }
 
-# Context menu with yad
+# Menu kontekstowe z yad
 if [ "$1" = "--menu" ]; then
   if ! command -v yad >/dev/null 2>&1; then
-    notify-send "Error" "yad package not installed. Install it: sudo apt install yad"
+    notify-send "Błąd" "Pakiet yad nie jest zainstalowany. Zainstaluj go: sudo apt install yad"
     exit 1
   fi
   ACTION=$(yad --title="Redshift" --window-icon="$ICON_ON" \
-    --text="Choose option:" --list --no-headers --print-output --column="Option" \
-    "Enable" "Disable" "Temperature 4500K" "Temperature 5500K" "Temperature 6500K" --width=200 --height=200 2>/dev/null | cut -d'|' -f1)
-  echo "Processed yad output: '$ACTION'"  # Debugging
+    --text="Wybierz opcję:" --list --no-headers --print-output --column="Opcja" \
+    "Włącz" "Wyłącz" "Temperatura 4500K" "Temperatura 5500K" "Temperatura 6500K" --width=200 --height=200 2>/dev/null | cut -d'|' -f1)
+  echo "Przetworzone wyjście yad: '$ACTION'"  # Debugowanie
   if [ -z "$ACTION" ]; then
-    notify-send "Error" "No option selected or output is empty"
+    notify-send "Błąd" "Nie wybrano żadnej opcji lub wyjście jest puste"
   else
     case "$ACTION" in
-      "Enable") turn_on ;;
-      "Disable") turn_off ;;
-      "Temperature 4500K") set_temp 4500 ;;
-      "Temperature 5500K") set_temp 5500 ;;
-      "Temperature 6500K") set_temp 6500 ;;
-      *) notify-send "Error" "Unknown option: '$ACTION'" ;;
+      "Włącz") turn_on ;;
+      "Wyłącz") turn_off ;;
+      "Temperatura 4500K") set_temp 4500 ;;
+      "Temperatura 5500K") set_temp 5500 ;;
+      "Temperatura 6500K") set_temp 6500 ;;
+      *) notify-send "Błąd" "Nieznana opcja: '$ACTION'" ;;
     esac
   fi
   exit 0
 fi
 
-# Standard toggle
+# Standardowe przełączanie
 if [ -f "$LOCKFILE" ]; then
   STATUS=$(cat "$LOCKFILE")
   if [ "$STATUS" = "on" ]; then
