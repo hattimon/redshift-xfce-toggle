@@ -10,7 +10,7 @@ turn_on() {
   redshift -c "$CONFIG_FILE" &
   sleep 1  # Poczekaj na uruchomienie Redshift
   echo "on" > "$LOCKFILE"
-  notify-send -i "$ICON_ON" "Redshift włączony"
+  notify-send -i "$ICON_ON" "Redshift ON"
   # Ręczna aktualizacja ikony (wymaga poprawnego ID wtyczki)
   # xfconf-query -c xfce4-panel -p /plugins/plugin-X/icon -s "$ICON_ON" 2>/dev/null
   # xfce4-panel -r 2>/dev/null || true
@@ -20,7 +20,7 @@ turn_off() {
   pkill redshift || true
   sleep 1  # Poczekaj na wyłączenie Redshift
   echo "off" > "$LOCKFILE"
-  notify-send -i "$ICON_OFF" "Redshift wyłączony"
+  notify-send -i "$ICON_OFF" "Redshift OFF"
   # Ręczna aktualizacja ikony (wymaga poprawnego ID wtyczki)
   # xfconf-query -c xfce4-panel -p /plugins/plugin-X/icon -s "$ICON_OFF" 2>/dev/null
   # xfce4-panel -r 2>/dev/null || true
