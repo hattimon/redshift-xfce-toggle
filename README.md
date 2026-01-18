@@ -58,6 +58,7 @@ Skrypt instalacyjny umożliwiający szybkie dodanie przełącznika **Redshift** 
    - `Temperatura 4500K`
    - `Temperatura 5500K`
    - `Temperatura 6500K`
+  ![Redshift](menu.png)
 
 > ⚠️ **Po zmianie temperatury barwowej należy ponownie wybrać opcję „Włącz”**, aby zastosować nowe ustawienia.
 
