@@ -45,7 +45,8 @@ Skrypt instalacyjny umożliwiający szybkie dodanie przełącznika **Redshift** 
      /bin/bash -c "$HOME/.local/bin/redshift-toggle --menu"
      ```
    - **Kliknij w Ikona** `Wpisz "Redshift" i wybierz ikone`
-  ![Redshift](Redshift.png)
+     
+![Redshift](Redshift.png)
      
 
 5. Kliknij `OK`, aby zapisać i zamknij okno właściwości.
