@@ -8,7 +8,7 @@ Skrypt instalacyjny umożliwiający szybkie dodanie przełącznika **Redshift** 
 
 ## 🧰 Wymagania
 
-- System: **Linux MX (deb) ** ze środowiskiem **XFCE**
+- System: **Linux MX** (deb) ze środowiskiem **XFCE**
 - Połączenie internetowe
 
 > ℹ️ Wymagane pakiety (`redshift`, `curl`, `jq`, `yad`, `xfce4-settings`) zostaną **automatycznie zainstalowane** przez skrypt.
