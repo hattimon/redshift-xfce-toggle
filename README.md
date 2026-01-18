@@ -45,6 +45,10 @@ Skrypt instalacyjny umożliwiający szybkie dodanie przełącznika **Redshift** 
      ```
 
    - **Komentarz (opcjonalnie)**: `Włącz/Wyłącz Redshift lub zmień ustawienia`
+  
+   - **Katalog roboczy**: `~/.local/bin/redshift-toggle`
+   - 
+   - **Uruchamianie w terminalu (opcjonalnie)**
 
 5. Kliknij `OK`, aby zapisać i zamknij okno właściwości.
 
