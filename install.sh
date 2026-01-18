@@ -13,48 +13,57 @@ REPO_URL="https://raw.githubusercontent.com/hattimon/redshift-xfce-toggle/main"
 log() { echo -e "${GREEN}[*] $1${NC}"; }
 error() { echo -e "${RED}[✗] $1${NC}"; exit 1; }
 
+# Dodaj ~/.local/bin do PATH
+export PATH="$HOME/.local/bin:$PATH"
+
 # 🔍 Sprawdzanie połączenia internetowego
-log "Sprawdzanie połączenia internetowego..."
+log "Checking internet connection..."
 if ! ping -c 1 archive.ubuntu.com &>/dev/null; then
-  error "Brak połączenia internetowego. Sprawdź połączenie i spróbuj ponownie."
+  error "No internet connection. Check your connection and try again."
+fi
+
+# 🔍 Test repozytorium
+log "Testing repository access..."
+if ! curl -s -f -o /dev/null "$REPO_URL/redshift-toggle.sh"; then
+  error "Repository or files not accessible (404?). Check GitHub /tree/main."
 fi
 
 # 🔍 Sprawdzanie instalacji redshift i zależności
-log "Sprawdzanie instalacji redshift..."
+log "Checking redshift installation..."
 if ! command -v redshift >/dev/null 2>&1; then
-  log "Redshift nie jest zainstalowany. Instaluję..."
-  sudo apt update || log "Ostrzeżenie: Wystąpiły problemy z repozytoriami, ale kontynuuję instalację."
-  sudo apt install -y redshift curl jq yad xfce4-settings || error "Nie udało się zainstalować wymaganych pakietów."
+  log "Redshift not installed. Installing..."
+  sudo apt update || log "Warning: Repository issues, continuing..."
+  sudo apt install -y redshift curl jq yad xfce4-settings geoclue-2.0 || error "Failed to install required packages."
 else
-  log "Redshift już zainstalowany."
+  log "Redshift already installed."
 fi
 
 # 🔍 Pobieranie lokalizacji
 echo
-echo "🌍 Podaj dane lokalizacji (użyj nazw łacińskich lub bez znaków diakrytycznych)"
-read -p "Kraj Country (np. Poland): " COUNTRY
-read -p "Miasto City (np. Warsaw): " CITY
+echo "🌍 Enter location (use Latin names or without diacritics)"
+read -p "Country (e.g. Poland): " COUNTRY
+read -p "City (e.g. Warsaw): " CITY
 
-log "Szukanie lokalizacji GPS dla ${CITY}, ${COUNTRY}..."
-RESPONSE=$(curl -s --connect-timeout 5 "https://geocode.maps.co/search?city=${CITY}&country=${COUNTRY}")
+log "Searching GPS for ${CITY}, ${COUNTRY}..."
+RESPONSE=$(curl -s --connect-timeout 10 "https://geocode.maps.co/search?city=${CITY}&country=${COUNTRY}")
 
 if [[ -z "$RESPONSE" || "$RESPONSE" == "[]" ]]; then
-  error "Nie znaleziono lokalizacji. Sprawdź poprawność lub połączenie internetowe."
+  error "Location not found. Check spelling or internet."
 fi
 
 LAT=$(echo "$RESPONSE" | jq -r '.[0].lat' 2>/dev/null)
 LON=$(echo "$RESPONSE" | jq -r '.[0].lon' 2>/dev/null)
 
 if [[ -z "$LAT" || -z "$LON" ]]; then
-  error "Nie udało się pobrać współrzędnych GPS."
+  error "Failed to get GPS coordinates."
 fi
-log "Znaleziono lokalizację: lat=$LAT, lon=$LON"
+log "Found location: lat=$LAT, lon=$LON"
 
 # 🔧 Tworzenie katalogów
 mkdir -p ~/.config/redshift ~/.local/bin ~/.local/share/icons ~/.config/autostart ~/.local/share/applications
 
-# 🔧 Konfiguracja Redshift
-cat > ~/.config/redshift/redshift.conf <<EOF
+# 🔧 Konfiguracja Redshift (quoted heredoc)
+cat > ~/.config/redshift/redshift.conf << EOF
 [redshift]
 temp-day=5800
 temp-night=4800
@@ -64,32 +73,33 @@ location-provider=manual
 adjustment-method=randr
 
 [manual]
-lat=$LAT
-lon=$LON
+lat=${LAT}
+lon=${LON}
 
 [randr]
 screen=0
 EOF
 
-# 📥 Pobieranie ikon z repozytorium
-log "Pobieranie ikon z repozytorium..."
-curl -s -o ~/.local/share/icons/redshift-on.png "$REPO_URL/redshift-on.png" || error "Nie udało się pobrać ikony redshift-on.png"
-curl -s -o ~/.local/share/icons/redshift-off.png "$REPO_URL/redshift-off.png" || error "Nie udało się pobrać ikony redshift-off.png"
+# 📥 Pobieranie ikon
+log "Downloading icons..."
+for icon in redshift-on.png redshift-off.png; do
+  curl -f -L -s -o ~/.local/share/icons/"$icon" "$REPO_URL/$icon" || error "Failed to download icon: $icon"
+done
 
-# 📥 Pobieranie skryptu redshift-toggle
-log "Pobieranie skryptu redshift-toggle..."
-curl -s -o ~/.local/bin/redshift-toggle "$REPO_URL/redshift-toggle.sh" || error "Nie udało się pobrać skryptu redshift-toggle.sh"
+# 📥 Pobieranie skryptu
+log "Downloading toggle script..."
+curl -f -L -s -o ~/.local/bin/redshift-toggle "$REPO_URL/redshift-toggle.sh" || error "Failed to download redshift-toggle.sh"
 chmod +x ~/.local/bin/redshift-toggle
 
-# 📥 Pobieranie pliku .desktop
-log "Pobieranie pliku redshift-toggle.desktop..."
-curl -s -o ~/.local/share/applications/redshift-toggle.desktop "$REPO_URL/redshift-toggle.desktop" || error "Nie udało się pobrać pliku redshift-toggle.desktop"
+# 📥 Pobieranie .desktop
+log "Downloading desktop file..."
+curl -f -L -s -o ~/.local/share/applications/redshift-toggle.desktop "$REPO_URL/redshift-toggle.desktop" || error "Failed to download .desktop file"
 
-# 🔧 Autostart Redshift
-cat > ~/.config/autostart/redshift.desktop <<EOF
+# 🔧 Autostart Redshift (z pkill dla bezpieczeństwa)
+cat > ~/.config/autostart/redshift.desktop << EOF
 [Desktop Entry]
 Type=Application
-Exec=redshift -c $HOME/.config/redshift/redshift.conf
+Exec=pkill -f redshift || true; redshift -c $HOME/.config/redshift/redshift.conf
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
@@ -97,20 +107,23 @@ Name=Redshift
 Comment=Auto-start Redshift
 EOF
 
-log "Instalacja zakończona. Installation completed."
+# 🔧 Dodaj PATH permanentnie
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc 2>/dev/null || true
+
+log "Installation completed successfully!"
 echo
-echo "👉 Aby dodać aktywator do panelu XFCE, wykonaj następujące kroki:"
-echo "1. Kliknij prawym przyciskiem myszy na panelu XFCE (pasek na górze lub dole ekranu)."
-echo "2. Wybierz „Panel” → „Dodaj nowy element”."
-echo "3. Wybierz „Aktywator” (Launcher) i kliknij „Dodaj”."
-echo "4. Kliknij prawym przyciskiem myszy na nowym aktywatorze w panelu → „Właściwości”."
-echo "5. Kliknij „Dodaj nowy pusty element” (lub ikonę „+”)."
-echo "6. Wypełnij pola:"
-echo "   - Nazwa: Redshift Toggle"
-echo "   - Polecenie: /bin/bash -c \"$HOME/.local/bin/redshift-toggle --menu\""
-echo "   - Ikona: Wybierz ~/.local/share/icons/redshift-on.png (lub wpisz pełną ścieżkę: $HOME/.local/share/icons/redshift-on.png)"
-echo "   - Komentarz (opcjonalnie): Włącz/Wyłącz Redshift lub zmień ustawienia"
-echo "7. Kliknij „OK”, aby dodać element, i zamknij okno właściwości."
-echo "🟡 Kliknięcie ikony w panelu wyświetli menu z opcjami: Włącz, Wyłącz, Temperatura 4500K, 5500K, 6500K."
+echo "👉 To add XFCE panel launcher:"
+echo "1. Right-click XFCE panel → Panel → Add New Items."
+echo "2. Select 'Launcher' → Add."
+echo "3. Right-click new launcher → Properties."
+echo "4. Add new item (+):"
+echo "   - Name: Redshift Toggle"
+echo "   - Command: $HOME/.local/bin/redshift-toggle --menu"
+echo "   - Icon: ~/.local/share/icons/redshift-on.png"
+echo "   - Comment: Toggle Redshift or change temp"
+echo "5. OK → Close."
+echo "🟡 Click icon for menu: On/Off, 4500K, 5500K, 6500K."
 echo
-echo "📦 Projekt zainstalowany z repozytorium GitHub."
+echo "Reload: source ~/.bashrc"
+echo "📦 Installed from GitHub repo."
