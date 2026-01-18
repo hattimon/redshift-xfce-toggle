@@ -1,3 +1,5 @@
+**Language:** [Polski](README.md) | [English](Redshift_EN.md)
+
 # Redshift XFCE Toggle
 
 Skrypt instalacyjny umożliwiający szybkie dodanie przełącznika **Redshift** w panelu **XFCE** z wygodnym menu do:
