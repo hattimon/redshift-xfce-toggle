@@ -4,6 +4,7 @@ set -e
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${YELLOW}🚀 Redshift Scheduler - COMPLETE Installation with Cleanup${NC}\n"
@@ -40,6 +41,10 @@ echo -e "${YELLOW}Removing old service files...${NC}"
 rm -f ~/.config/systemd/user/redshift-scheduler-daemon.service
 rm -f ~/.config/systemd/user/redshift-scheduler-applet.service
 
+# Remove old autostart
+echo -e "${YELLOW}Removing old autostart...${NC}"
+rm -f ~/.config/autostart/redshift-scheduler-applet.desktop
+
 # Keep config for backup but create fresh if needed
 echo -e "${YELLOW}Backing up old config...${NC}"
 if [ -f ~/.config/redshift-scheduler/config.json ]; then
@@ -61,6 +66,7 @@ echo -e "${GREEN}📁 Creating directories...${NC}"
 mkdir -p ~/.local/bin
 mkdir -p ~/.config/redshift-scheduler
 mkdir -p ~/.config/systemd/user
+mkdir -p ~/.config/autostart
 chmod 700 ~/.config/systemd/user
 echo -e "${GREEN}✅ Directories created${NC}\n"
 
@@ -180,12 +186,12 @@ chmod +x ~/.local/bin/redshift-scheduler-daemon
 echo -e "${GREEN}✅ Daemon installed${NC}\n"
 
 # ============================================
-# 3. INSTALL APPLET (GUI) - TRAY ICON WITH MENU
+# 3. INSTALL APPLET (GUI) - FIXED VERSION
 # ============================================
-echo -e "${GREEN}📦 Installing applet (GUI with tray)...${NC}"
+echo -e "${GREEN}📦 Installing applet (GUI with menu)...${NC}"
 cat > ~/.local/bin/redshift-scheduler-applet << 'APPLET_SCRIPT'
 #!/usr/bin/env python3
-"""Redshift Scheduler Applet - System tray with dropdown menu"""
+"""Redshift Scheduler Applet - System tray with graphical menu"""
 import tkinter as tk
 from tkinter import messagebox
 import json
@@ -193,17 +199,18 @@ import os
 import sys
 import signal
 import subprocess
+from pathlib import Path
 
 CONFIG_FILE = os.path.expanduser("~/.config/redshift-scheduler/config.json")
 
-# Temperature presets with colors
+# Temperature presets
 TEMP_PRESETS = {
     "🔥 Gorący (3000K)": 3000,
     "🌅 Zmierzch (4500K)": 4500,
     "❄️ Chłodny (6500K)": 6500,
 }
 
-# Color options for menu
+# Color options
 COLORS = {
     "🌙 Niebieska (Night)": "#1E90FF",
     "💛 Żółta (Warm)": "#FFD700",
@@ -211,133 +218,242 @@ COLORS = {
     "🔥 Czerwona (Intense)": "#FF4500",
 }
 
-def load_config():
-    """Load configuration from JSON file"""
-    try:
-        with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        return {"enabled": True, "start_hour": 21, "end_hour": 8, "temperature": 4500, "color": "#FFD700"}
+# Languages
+LANGUAGES = {
+    "English": "en",
+    "Polski": "pl",
+}
 
-def save_config(config):
-    """Save configuration to JSON file"""
-    try:
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(config, f, indent=2)
-    except Exception as e:
-        pass
+# Translations
+TEXTS = {
+    "en": {
+        "toggle": "🌙 Toggle ON/OFF",
+        "temperature": "📊 Temperature:",
+        "color": "🎨 Menu Color:",
+        "language": "🌐 Language:",
+        "close": "❌ Close",
+    },
+    "pl": {
+        "toggle": "🌙 Przełącz ON/OFF",
+        "temperature": "📊 Temperatura:",
+        "color": "🎨 Kolor menu:",
+        "language": "🌐 Język:",
+        "close": "❌ Zamknij",
+    }
+}
 
-def toggle_enabled():
-    """Toggle scheduler ON/OFF"""
-    config = load_config()
-    config["enabled"] = not config.get("enabled", True)
-    save_config(config)
-    update_tray()
-    hide_menu()
-
-def set_temperature(temp):
-    """Set temperature preset"""
-    config = load_config()
-    config["temperature"] = temp
-    save_config(config)
-    hide_menu()
-    update_tray()
-
-def set_color(color_hex):
-    """Set menu color"""
-    config = load_config()
-    config["color"] = color_hex
-    save_config(config)
-    hide_menu()
-    update_tray()
-
-def update_tray():
-    """Update tray icon and label"""
-    config = load_config()
-    enabled = config.get("enabled", True)
-    color = config.get("color", "#FFD700")
+class RedshiftApplet:
+    def __init__(self, root):
+        self.root = root
+        self.root.withdraw()
+        self.root.title("Redshift Scheduler")
+        
+        self.current_language = "pl"
+        self.load_language()
+        
+        # Create tray frame
+        self.tray_frame = tk.Frame(root, relief=tk.RAISED, bd=1)
+        self.tray_frame.pack(padx=3, pady=3)
+        
+        self.tray_label = tk.Label(
+            self.tray_frame, text="🌙 ON", font=("Arial", 11, "bold"),
+            width=8, height=1, padx=5, pady=3, bg="#FFD700", fg="black"
+        )
+        self.tray_label.pack()
+        self.tray_label.bind("<Button-1>", self.show_menu)
+        self.tray_label.bind("<Button-3>", lambda e: self.root.destroy())
+        
+        # Create menu
+        self.menu = tk.Menu(root, tearoff=False, bg="#2C2C2C", fg="white", activebg="#444444")
+        self.build_menu()
+        
+        # Position window in top-right corner
+        self.root.geometry("+1850+10")
+        self.root.overrideredirect(True)
+        self.root.attributes('-topmost', True)
+        self.root.deiconify()
+        
+        self.update_tray()
+        
+        # Handle signals
+        signal.signal(signal.SIGTERM, lambda s, f: self.root.destroy())
+        signal.signal(signal.SIGINT, lambda s, f: self.root.destroy())
+        
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
     
-    if enabled:
-        status_text = "🌙 ON"
-        bg_color = color
-    else:
-        status_text = "☀️ OFF"
-        bg_color = "#666666"
+    def load_language(self):
+        """Load language from config"""
+        config = self.load_config()
+        self.current_language = config.get("language", "pl")
     
-    tray_label.config(text=status_text, bg=bg_color, fg="black" if color == "#FFD700" else "white")
+    def t(self, key):
+        """Get translated text"""
+        return TEXTS.get(self.current_language, TEXTS["en"]).get(key, key)
+    
+    def load_config(self):
+        """Load configuration from JSON file"""
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            return {
+                "enabled": True,
+                "start_hour": 21,
+                "end_hour": 8,
+                "temperature": 4500,
+                "color": "#FFD700",
+                "language": "pl"
+            }
+    
+    def save_config(self, config):
+        """Save configuration to JSON file"""
+        try:
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config, f, indent=2)
+        except Exception:
+            pass
+    
+    def restart_daemon(self):
+        """Restart daemon service"""
+        try:
+            subprocess.run(
+                ["systemctl", "--user", "restart", "redshift-scheduler-daemon.service"],
+                capture_output=True,
+                timeout=5
+            )
+            return True
+        except Exception:
+            return False
+    
+    def toggle_enabled(self):
+        """Toggle scheduler ON/OFF"""
+        config = self.load_config()
+        config["enabled"] = not config.get("enabled", True)
+        self.save_config(config)
+        self.update_tray()
+        self.hide_menu()
+    
+    def set_temperature(self, temp):
+        """Set temperature preset and restart daemon"""
+        config = self.load_config()
+        config["temperature"] = temp
+        self.save_config(config)
+        self.restart_daemon()
+        self.hide_menu()
+        self.update_tray()
+    
+    def set_color(self, color_hex):
+        """Set menu color"""
+        config = self.load_config()
+        config["color"] = color_hex
+        self.save_config(config)
+        self.hide_menu()
+        self.update_tray()
+    
+    def set_language(self, lang_code):
+        """Set language"""
+        config = self.load_config()
+        config["language"] = lang_code
+        self.save_config(config)
+        self.current_language = lang_code
+        self.hide_menu()
+        self.rebuild_menu()
+        self.update_tray()
+    
+    def update_tray(self):
+        """Update tray icon and label"""
+        config = self.load_config()
+        enabled = config.get("enabled", True)
+        color = config.get("color", "#FFD700")
+        
+        if enabled:
+            status_text = "🌙 ON"
+            bg_color = color
+        else:
+            status_text = "☀️ OFF"
+            bg_color = "#666666"
+        
+        text_color = "black" if color == "#FFD700" else "white"
+        self.tray_label.config(text=status_text, bg=bg_color, fg=text_color)
+    
+    def show_menu(self, event):
+        """Show dropdown menu at cursor"""
+        self.menu.post(event.x_root, event.y_root)
+    
+    def hide_menu(self):
+        """Hide menu"""
+        self.menu.unpost()
+    
+    def rebuild_menu(self):
+        """Rebuild menu with current language"""
+        self.menu.delete(0, tk.END)
+        self.build_menu()
+    
+    def build_menu(self):
+        """Build dropdown menu"""
+        # Toggle option
+        self.menu.add_command(
+            label=self.t("toggle"),
+            command=self.toggle_enabled,
+            foreground="white"
+        )
+        self.menu.add_separator()
+        
+        # Temperature section
+        self.menu.add_label(label=self.t("temperature"), foreground="#FFD700")
+        for label, temp in TEMP_PRESETS.items():
+            self.menu.add_command(
+                label=label,
+                command=lambda t=temp: self.set_temperature(t),
+                foreground="white"
+            )
+        
+        self.menu.add_separator()
+        
+        # Color section
+        self.menu.add_label(label=self.t("color"), foreground="#FFD700")
+        for label, color in COLORS.items():
+            self.menu.add_command(
+                label=label,
+                command=lambda c=color: self.set_color(c),
+                foreground="white"
+            )
+        
+        self.menu.add_separator()
+        
+        # Language section
+        self.menu.add_label(label=self.t("language"), foreground="#FFD700")
+        for lang_name, lang_code in LANGUAGES.items():
+            self.menu.add_command(
+                label=lang_name,
+                command=lambda lc=lang_code: self.set_language(lc),
+                foreground="white"
+            )
+        
+        self.menu.add_separator()
+        
+        # Exit option
+        self.menu.add_command(
+            label=self.t("close"),
+            command=lambda: self.root.destroy(),
+            foreground="#FF4444"
+        )
+    
+    def on_close(self):
+        """Close applet"""
+        self.root.withdraw()
+        self.root.after(1000, self.root.destroy)
 
-def show_menu(event):
-    """Show dropdown menu at cursor"""
-    menu.post(event.x_root, event.y_root)
-
-def hide_menu():
-    """Hide menu"""
-    menu.unpost()
-
-def on_close():
-    """Close applet and hide from taskbar"""
-    root.withdraw()
-    root.after(1000, root.destroy)
-
-# Create main window (hidden)
-root = tk.Tk()
-root.withdraw()
-root.title("Redshift Scheduler")
-
-# Create tray icon (clickable label)
-tray_frame = tk.Frame(root, relief=tk.RAISED, bd=1)
-tray_frame.pack(padx=3, pady=3)
-
-tray_label = tk.Label(tray_frame, text="🌙 ON", font=("Arial", 11, "bold"), 
-                       width=8, height=1, padx=5, pady=3, bg="#FFD700", fg="black")
-tray_label.pack()
-tray_label.bind("<Button-1>", show_menu)
-tray_label.bind("<Button-3>", lambda e: root.destroy())  # Right-click to close
-
-# Create dropdown menu
-menu = tk.Menu(root, tearoff=False, bg="#2C2C2C", fg="white", activebg="#444444")
-
-# Toggle option
-menu.add_command(label="🌙 Toggle ON/OFF", command=toggle_enabled, foreground="white")
-menu.add_separator()
-
-# Temperature section
-menu.add_label(label="📊 Temperatura:", foreground="#FFD700")
-for label, temp in TEMP_PRESETS.items():
-    menu.add_command(label=label, command=lambda t=temp: set_temperature(t), foreground="white")
-
-menu.add_separator()
-
-# Color section
-menu.add_label(label="🎨 Kolor menu:", foreground="#FFD700")
-for label, color in COLORS.items():
-    menu.add_command(label=label, command=lambda c=color: set_color(c), foreground="white")
-
-menu.add_separator()
-
-# Exit option
-menu.add_command(label="❌ Zamknij", command=lambda: root.destroy(), foreground="#FF4444")
-
-# Start tray in top-right corner (minimized)
-root.geometry("+1850+10")
-root.overrideredirect(True)
-root.attributes('-topmost', True)
-root.deiconify()
-
-update_tray()
-
-# Handle SIGTERM
-def handle_signal(signum, frame):
-    root.destroy()
-    sys.exit(0)
-
-signal.signal(signal.SIGTERM, handle_signal)
-signal.signal(signal.SIGINT, handle_signal)
-
-# Hide window on close
-root.protocol("WM_DELETE_WINDOW", on_close)
-
-root.mainloop()
+if __name__ == "__main__":
+    try:
+        root = tk.Tk()
+        app = RedshiftApplet(root)
+        root.mainloop()
+    except Exception as e:
+        # Log error but don't crash
+        with open(os.path.expanduser("~/.config/redshift-scheduler/applet.log"), "a") as f:
+            f.write(f"Error: {e}\n")
+        sys.exit(1)
 APPLET_SCRIPT
 
 chmod +x ~/.local/bin/redshift-scheduler-applet
@@ -387,21 +503,23 @@ StandardError=journal
 WantedBy=default.target
 DAEMON_SERVICE
 
-# Applet service (GUI)
+# Applet service (GUI) - IMPROVED
 cat > ~/.config/systemd/user/redshift-scheduler-applet.service << 'APPLET_SERVICE'
 [Unit]
 Description=Redshift Scheduler Applet
 PartOf=graphical-session.target
 After=graphical-session-pre.target
+Wants=dbus.service
 
 [Service]
 Type=simple
-ExecStart=sh -c 'DISPLAY=${DISPLAY:-:0} %h/.local/bin/redshift-scheduler-applet'
+ExecStart=/bin/sh -c 'sleep 2; exec env DISPLAY=:0 XDG_VTNR=7 %h/.local/bin/redshift-scheduler-applet'
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="XAUTHORITY=%h/.Xauthority"
 
 [Install]
 WantedBy=graphical-session.target
@@ -410,7 +528,33 @@ APPLET_SERVICE
 echo -e "${GREEN}✅ Service files created${NC}\n"
 
 # ============================================
-# 6. FIX SYSTEMD (MX Linux issue)
+# 6. CREATE AUTOSTART .DESKTOP FILE
+# ============================================
+echo -e "${GREEN}🔧 Creating autostart entry...${NC}"
+cat > ~/.config/autostart/redshift-scheduler-applet.desktop << 'AUTOSTART'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Redshift Scheduler Applet
+Exec=env DISPLAY=:0 /home/%u/.local/bin/redshift-scheduler-applet
+Icon=preferences-desktop-display
+Categories=Utility;System;
+NoDisplay=false
+Terminal=false
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+X-KDE-autostart-after=panel
+X-XFCE-Autostart=true
+AutostartCondition=unless-running redshift-scheduler-applet
+AUTOSTART
+
+# Replace %u with actual username
+sed -i "s|%u|$USER|g" ~/.config/autostart/redshift-scheduler-applet.desktop
+
+echo -e "${GREEN}✅ Autostart entry created${NC}\n"
+
+# ============================================
+# 7. FIX SYSTEMD (MX Linux issue)
 # ============================================
 echo -e "${GREEN}🔧 Fixing systemd (MX Linux compatibility)...${NC}"
 
@@ -429,7 +573,7 @@ fi
 echo -e "${GREEN}✅ Systemd fixed${NC}\n"
 
 # ============================================
-# 7. ENABLE AND START SERVICES
+# 8. ENABLE AND START SERVICES
 # ============================================
 echo -e "${GREEN}✅ Enabling services...${NC}"
 systemctl --user enable redshift-scheduler-daemon.service 2>/dev/null || true
@@ -439,10 +583,10 @@ echo -e "${GREEN}🚀 Starting services...${NC}"
 systemctl --user start redshift-scheduler-daemon.service 2>/dev/null || true
 systemctl --user start redshift-scheduler-applet.service 2>/dev/null || true
 
-sleep 2
+sleep 3
 
 # ============================================
-# 8. VERIFY INSTALLATION
+# 9. VERIFY INSTALLATION
 # ============================================
 echo -e "${GREEN}📊 Verifying installation...${NC}\n"
 
@@ -456,17 +600,17 @@ if [ $RUNNING -gt 0 ]; then
     echo -e "${GREEN}✅ Found $RUNNING running processes:${NC}"
     ps aux | grep -E "redshift-scheduler-(daemon|applet)" | grep -v grep
 else
-    echo -e "${YELLOW}⚠️  Processes not running from systemd - trying manual start...${NC}"
+    echo -e "${YELLOW}⚠️  Processes not running - trying fallback...${NC}"
     ~/.local/bin/redshift-scheduler-daemon > /dev/null 2>&1 &
     sleep 1
     DISPLAY=:0 ~/.local/bin/redshift-scheduler-applet > /dev/null 2>&1 &
     sleep 2
     RUNNING=$(ps aux | grep -E "redshift-scheduler-(daemon|applet)" | grep -v grep | wc -l)
     if [ $RUNNING -gt 0 ]; then
-        echo -e "${GREEN}✅ Manual start successful! Found $RUNNING processes:${NC}"
+        echo -e "${GREEN}✅ Fallback successful! Found $RUNNING processes:${NC}"
         ps aux | grep -E "redshift-scheduler-(daemon|applet)" | grep -v grep
     else
-        echo -e "${RED}❌ Failed to start - check systemd status${NC}"
+        echo -e "${RED}❌ Failed to start - check logs${NC}"
     fi
 fi
 
@@ -492,30 +636,25 @@ else
     echo -e "${RED}❌${NC} ~/.config/redshift-scheduler/config.json"
 fi
 
-if [ -f ~/.config/systemd/user/redshift-scheduler-daemon.service ]; then
-    echo -e "${GREEN}✅${NC} ~/.config/systemd/user/redshift-scheduler-daemon.service"
+if [ -f ~/.config/autostart/redshift-scheduler-applet.desktop ]; then
+    echo -e "${GREEN}✅${NC} ~/.config/autostart/redshift-scheduler-applet.desktop"
 else
-    echo -e "${RED}❌${NC} ~/.config/systemd/user/redshift-scheduler-daemon.service"
-fi
-
-if [ -f ~/.config/systemd/user/redshift-scheduler-applet.service ]; then
-    echo -e "${GREEN}✅${NC} ~/.config/systemd/user/redshift-scheduler-applet.service"
-else
-    echo -e "${RED}❌${NC} ~/.config/systemd/user/redshift-scheduler-applet.service"
+    echo -e "${RED}❌${NC} ~/.config/autostart/redshift-scheduler-applet.desktop"
 fi
 
 # ============================================
-# 9. INSTALLATION SUMMARY
+# 10. INSTALLATION SUMMARY
 # ============================================
 echo -e "\n${GREEN}═══════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}✅ INSTALLATION COMPLETE!${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════════════${NC}\n"
 
 echo -e "${YELLOW}📁 Installed files:${NC}"
-echo "  • Daemon:  ~/.local/bin/redshift-scheduler-daemon"
-echo "  • Applet:  ~/.local/bin/redshift-scheduler-applet"
-echo "  • Config:  ~/.config/redshift-scheduler/config.json"
-echo "  • Services: ~/.config/systemd/user/"
+echo "  • Daemon:     ~/.local/bin/redshift-scheduler-daemon"
+echo "  • Applet:     ~/.local/bin/redshift-scheduler-applet"
+echo "  • Config:     ~/.config/redshift-scheduler/config.json"
+echo "  • Services:   ~/.config/systemd/user/"
+echo "  • Autostart:  ~/.config/autostart/redshift-scheduler-applet.desktop"
 
 echo -e "\n${YELLOW}🎨 Features:${NC}"
 echo "  • 🌙 Tray icon dropdown menu (click to show)"
@@ -523,7 +662,7 @@ echo "  • 🔄 Toggle ON/OFF directly from menu"
 echo "  • 📊 Temperature presets (3000K, 4500K, 6500K)"
 echo "  • 🎨 Color themes (Blue, Yellow, Orange, Red)"
 echo "  • 🌐 Language support (English, Polski)"
-echo "  • ⚙️  Auto-start on login"
+echo "  • ⚙️  Auto-start on login (XFCE/GNOME compatible)"
 echo "  • 👻 Minimized window in top-right corner"
 echo "  • 🚀 Right-click to close tray"
 echo "  • 🔄 Automatic daemon restart on color/temp change"
@@ -531,8 +670,8 @@ echo "  • 🔄 Automatic daemon restart on color/temp change"
 echo -e "\n${YELLOW}🔧 Useful commands:${NC}"
 echo "  • Check daemon:  systemctl --user status redshift-scheduler-daemon"
 echo "  • View logs:     journalctl --user -u redshift-scheduler-daemon -f"
+echo "  • Applet logs:   tail -f ~/.config/redshift-scheduler/applet.log"
 echo "  • Edit config:   nano ~/.config/redshift-scheduler/config.json"
-echo "  • Manual start:  ~/.local/bin/redshift-scheduler-daemon &"
 echo "  • Manual applet: DISPLAY=:0 ~/.local/bin/redshift-scheduler-applet &"
 echo "  • Stop services: systemctl --user stop redshift-scheduler-*.service"
 echo "  • Restart:       systemctl --user restart redshift-scheduler-*.service"
@@ -544,6 +683,12 @@ echo "  3. Toggle ON/OFF or change temperature"
 echo "  4. Select color theme from menu"
 echo "  5. Choose language (English/Polski)"
 echo "  6. Right-click to close (or just click away)"
+echo "  7. 💡 After login, applet starts automatically"
+
+echo -e "\n${YELLOW}❓ If applet doesn't appear:${NC}"
+echo "  1. Check logs: tail -f ~/.config/redshift-scheduler/applet.log"
+echo "  2. Manual start: DISPLAY=:0 ~/.local/bin/redshift-scheduler-applet &"
+echo "  3. Restart applet: systemctl --user restart redshift-scheduler-applet"
 
 echo -e "\n${YELLOW}📦 To reinstall in the future:${NC}"
 echo "  bash install.sh"
