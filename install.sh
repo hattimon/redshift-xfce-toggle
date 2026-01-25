@@ -30,7 +30,6 @@ if [ "$LANG" = "pl" ]; then
     INSTALLED="✅ Zainstalowane:"
     TEST_MENU="🔧 Test menu:"
     NEXT_STEPS="Następne kroki:"
-    RESTART_PANEL="Restart panelu XFCE:"
     COMPLETE="INSTALACJA UKOŃCZONA!"
     HAPPY_CODING="Miłej pracy! 🌙"
 else
@@ -42,7 +41,6 @@ else
     INSTALLED="✅ Installed:"
     TEST_MENU="🔧 Test menu:"
     NEXT_STEPS="Next steps:"
-    RESTART_PANEL="Restart XFCE panel:"
     COMPLETE="INSTALLATION COMPLETE!"
     HAPPY_CODING="Happy coding! 🌙"
 fi
@@ -74,7 +72,7 @@ mkdir -p ~/.local/bin ~/.local/share/applications ~/.config/autostart
 echo -e "${GREEN}[*] ${INSTALL_SCRIPT}${NC}"
 cat > ~/.local/bin/redshift-toggle << 'REDTOGGLE_SCRIPT'
 #!/bin/bash
-# Redshift XFCE Toggle - FIXED VERSION
+# Redshift XFCE Toggle - ULTIMATE FIX VERSION
 
 RED_CONF="$HOME/.config/redshift/redshift.conf"
 
@@ -92,40 +90,76 @@ lon=21.0122
 EOF
 fi
 
+# FORCE KILL any existing redshift
+pkill redshift 2>/dev/null || true
+sleep 0.3
+
 toggle_redshift() {
     if pgrep redshift >/dev/null 2>&1; then
-        pkill redshift
-        notify-send "Redshift" "⚫ WYŁĄCZONY / OFF" -t 1500
+        pkill -9 redshift 2>/dev/null || true
+        sleep 0.2
+        notify-send -u critical "Redshift" "⚫ WYŁĄCZONY / OFF" -t 2000
+        echo "OFF"
     else
-        redshift &
-        notify-send "Redshift" "🔴 WŁĄCZONY / ON (3000K)" -t 1500
+        redshift -l 52.2297:21.0122 &
+        sleep 1
+        if pgrep redshift >/dev/null 2>&1; then
+            notify-send -u normal "Redshift" "🔴 WŁĄCZONY / ON" -t 2000
+            echo "ON"
+        else
+            notify-send -u critical "Redshift" "❌ ERROR: Cannot start / Błąd uruchomienia" -t 3000
+            echo "FAILED"
+        fi
     fi
 }
 
 set_temp() {
-    TEMP=$1
+    local TEMP=$1
     sed -i "s/temp-night=[0-9]*/temp-night=$TEMP/" "$RED_CONF"
-    pkill redshift 2>/dev/null || true
+    pkill -9 redshift 2>/dev/null || true
     sleep 0.5
-    redshift &
-    notify-send "Redshift" "🌅 $TEMP K" -t 1500
+    redshift -l 52.2297:21.0122 &
+    sleep 1
+    if pgrep redshift >/dev/null 2>&1; then
+        notify-send "Redshift" "🌅 $TEMP K" -t 2000
+        echo "$TEMP OK"
+    else
+        notify-send -u critical "Redshift" "❌ $TEMP K - ERROR / BŁĄD" -t 3000
+        echo "$TEMP FAILED"
+    fi
 }
 
-# VERTICAL COMPACT YAD MENU
-yad --title="🌙 Redshift" \
-    --text="" \
-    --width=120 --height=220 \
-    --buttons-layout=spread \
-    --button="⚫ OFF"!"#FF0000"!"Wyłącz / Disable":1 \
-    --button="🔥 3000K"!"#FF4500"!"Gorący / Hot":2 \
-    --button="🌅 4500K"!"#FFD700"!"Zmierzch / Warm":3 \
-    --button="☀️ 6500K"!"#00BFFF"!"Chłodny / Cool":4
+# DEBUG: Show current status
+echo "=== DEBUG ==="
+echo "Redshift PID: $(pgrep redshift 2>/dev/null || echo 'NONE')"
+echo "Config: $RED_CONF"
+echo ""
 
-case $? in
+# MAIN YAD MENU - BUTTONS WITH PROPER LAYOUT
+yad --title="🌙 Redshift Control / Kontrola" \
+    --width=160 --height=300 \
+    --buttons-layout=center \
+    --button="🔴 ON"!"#FF0000":"1" \
+    --button="⚫ OFF"!"#808080":"2" \
+    --button="🔥 3000K"!"#FF6600":"3" \
+    --button="🌅 4500K"!"#FFD700":"4" \
+    --button="❄️ 6500K"!"#0099FF":"5"
+
+RESULT=$?
+
+echo "YAD RESULT: $RESULT"
+
+case $RESULT in
     1) toggle_redshift ;;
-    2) set_temp 3000 ;;
-    3) set_temp 4500 ;;
-    4) set_temp 6500 ;;
+    2) 
+        pkill -9 redshift 2>/dev/null || true
+        sleep 0.2
+        notify-send -u critical "Redshift" "⚫ WYŁĄCZONY / OFF" -t 2000
+        ;;
+    3) set_temp 3000 ;;
+    4) set_temp 4500 ;;
+    5) set_temp 6500 ;;
+    *) echo "Cancelled / Anulowano" ;;
 esac
 REDTOGGLE_SCRIPT
 
@@ -157,11 +191,11 @@ DESKTOP_ENTRY
 # ============================================
 # 5. CREATE AUTOSTART ENTRY
 # ============================================
-cat > ~/.config/autostart/redshift-toggle.desktop << AUTOSTART_ENTRY
+cat > ~/.config/autostart/redshift-autoenable.desktop << AUTOSTART_ENTRY
 [Desktop Entry]
 Type=Application
 Name=Redshift Auto-Enable
-Exec=bash -c 'sleep 2 && redshift &'
+Exec=bash -c 'sleep 3 && redshift -l 52.2297:21.0122 &'
 X-XFCE-Autostart=true
 NoDisplay=false
 AUTOSTART_ENTRY
@@ -182,7 +216,7 @@ if [ -f ~/.local/share/applications/redshift-toggle.desktop ]; then
     echo -e "${GREEN}✅ Desktop entry created${NC}"
 fi
 
-if [ -f ~/.config/autostart/redshift-toggle.desktop ]; then
+if [ -f ~/.config/autostart/redshift-autoenable.desktop ]; then
     echo -e "${GREEN}✅ Autostart configured${NC}"
 fi
 
@@ -196,15 +230,15 @@ echo -e "${GREEN}═════════════════════
 echo -e "${YELLOW}📁 Installed files:${NC}"
 echo "  • ~/.local/bin/redshift-toggle"
 echo "  • ~/.local/share/applications/redshift-toggle.desktop"
-echo "  • ~/.config/autostart/redshift-toggle.desktop"
+echo "  • ~/.config/autostart/redshift-autoenable.desktop"
 
 echo -e "\n${YELLOW}🎨 Features:${NC}"
-echo "  • 4 preset buttons (OFF, 3000K, 4500K, 6500K)"
-echo "  • Compact vertical layout"
+echo "  • 5 buttons: ON, OFF, 3000K, 4500K, 6500K"
+echo "  • Color-coded buttons with icons"
 echo "  • Auto-restart redshift on temperature change"
-echo "  • Color-coded buttons"
 echo "  • Auto-enable on login"
 echo "  • Notification feedback"
+echo "  • Polish & English support"
 
 echo -e "\n${YELLOW}🚀 Usage:${NC}"
 if [ "$LANG" = "pl" ]; then
@@ -219,7 +253,7 @@ fi
 
 echo -e "\n${YELLOW}🔧 Useful commands:${NC}"
 echo "  • Manual run:     ~/.local/bin/redshift-toggle"
-echo "  • Enable only:    redshift &"
+echo "  • Enable only:    redshift -l 52.2297:21.0122 &"
 echo "  • Disable:        pkill redshift"
 echo "  • Config file:    ~/.config/redshift/redshift.conf"
 
