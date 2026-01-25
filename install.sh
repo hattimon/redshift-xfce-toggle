@@ -1,6 +1,3 @@
-# Pobierz fixed version
-curl -o ~/install.sh https://raw.githubusercontent.com/karol/redshift/main/install.sh || \
-cat > ~/install.sh << 'EOF'
 #!/bin/bash
 set -e
 
@@ -188,9 +185,3 @@ echo "  • Disable:        pkill redshift"
 echo "  • Config file:    ~/.config/redshift/redshift.conf"
 
 echo -e "\n${GREEN}${HAPPY_CODING}${NC}\n"
-EOF
-
-chmod +x ~/install.sh
-
-# Uruchom instalator
-bash ~/install.sh
