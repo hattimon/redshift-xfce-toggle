@@ -353,7 +353,8 @@ cat > ~/.config/redshift-scheduler/config.json << 'CONFIG'
   "start_hour": 21,
   "end_hour": 8,
   "temperature": 4500,
-  "color": "#FFD700"
+  "color": "#FFD700",
+  "language": "pl"
 }
 CONFIG
 
@@ -521,9 +522,11 @@ echo "  • 🌙 Tray icon dropdown menu (click to show)"
 echo "  • 🔄 Toggle ON/OFF directly from menu"
 echo "  • 📊 Temperature presets (3000K, 4500K, 6500K)"
 echo "  • 🎨 Color themes (Blue, Yellow, Orange, Red)"
+echo "  • 🌐 Language support (English, Polski)"
 echo "  • ⚙️  Auto-start on login"
 echo "  • 👻 Minimized window in top-right corner"
 echo "  • 🚀 Right-click to close tray"
+echo "  • 🔄 Automatic daemon restart on color/temp change"
 
 echo -e "\n${YELLOW}🔧 Useful commands:${NC}"
 echo "  • Check daemon:  systemctl --user status redshift-scheduler-daemon"
@@ -539,7 +542,8 @@ echo "  1. ✅ Installation done - tray icon in top-right corner"
 echo "  2. Click 🌙 icon to open dropdown menu"
 echo "  3. Toggle ON/OFF or change temperature"
 echo "  4. Select color theme from menu"
-echo "  5. Right-click to close (or just click away)"
+echo "  5. Choose language (English/Polski)"
+echo "  6. Right-click to close (or just click away)"
 
 echo -e "\n${YELLOW}📦 To reinstall in the future:${NC}"
 echo "  bash install.sh"
