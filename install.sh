@@ -77,16 +77,12 @@ lon=21.0122
 EOF
 
 # ============================================
-# 4. INSTALL MAIN SCRIPT
+# 4. INSTALL MAIN SCRIPT (FIXED - NO PKILL ON START)
 # ============================================
 echo -e "${GREEN}[*] ${INSTALL_SCRIPT}${NC}"
 cat > ~/.local/bin/redshift-toggle << 'REDSHIFT_TOGGLE'
 #!/bin/bash
-# Redshift XFCE Toggle - Production Version
-
-# Kill any existing redshift
-pkill redshift 2>/dev/null || true
-sleep 0.3
+# Redshift XFCE Toggle - FIXED VERSION (No pkill on start)
 
 toggle_redshift() {
     if pgrep redshift >/dev/null 2>&1; then
@@ -118,7 +114,7 @@ set_temp() {
     fi
 }
 
-# MAIN YAD MENU
+# MAIN YAD MENU - NO KILLING BEFORE MENU
 yad --title="🌙 Redshift Control" \
     --width=220 \
     --height=340 \
@@ -148,7 +144,7 @@ REDSHIFT_TOGGLE
 chmod +x ~/.local/bin/redshift-toggle
 
 # ============================================
-# 5. CREATE DESKTOP ENTRY
+# 5. CREATE DESKTOP ENTRY WITH PROPER DISPLAY
 # ============================================
 if [ "$LANG" = "pl" ]; then
     DESK_COMMENT="Kontrola intensywności światła ekranu"
@@ -156,13 +152,13 @@ else
     DESK_COMMENT="Control screen light intensity"
 fi
 
-cat > ~/.local/share/applications/redshift-toggle.desktop << EOF
+cat > ~/.local/share/applications/redshift-toggle.desktop << 'EOF'
 [Desktop Entry]
 Type=Application
 Name=Redshift Toggle
-Comment=${DESK_COMMENT}
+Comment=Control screen light intensity
 Icon=redshift
-Exec=env DISPLAY=\${DISPLAY} ~/.local/bin/redshift-toggle
+Exec=bash -c 'DISPLAY=${DISPLAY:-:0} ~/.local/bin/redshift-toggle'
 Terminal=false
 Categories=Utility;
 StartupNotify=true
